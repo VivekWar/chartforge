@@ -12,8 +12,14 @@ export function useEnigmaTrader(
 ) {
     const setActiveTradeSetup = useStore(state => state.setActiveTradeSetup);
     const activeSetup = useStore(state => state.activeTradeSetup);
+    const showTradeSetups = useStore(state => state.liquiditySettings.showTradeSetups);
 
     useEffect(() => {
+        if (!showTradeSetups) {
+            if (activeSetup) setActiveTradeSetup(null);
+            return;
+        }
+
         if (!currentCandle) return;
 
         const currentPrice = currentCandle.close;

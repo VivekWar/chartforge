@@ -50,6 +50,7 @@ export interface LiquiditySettings {
     showMagneticBlocks: boolean;
     showLiquiditySweeps: boolean;
     showInstitutionalZones: boolean;
+    showTradeSetups: boolean;
     strictMode: boolean;
 }
 
@@ -76,6 +77,7 @@ export const createLiquiditySlice: StateCreator<
         showMagneticBlocks: true,
         showLiquiditySweeps: true,
         showInstitutionalZones: true,
+        showTradeSetups: true,
         strictMode: false,
     },
     dashboardMetrics: {

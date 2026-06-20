@@ -112,14 +112,15 @@ class LiquidityPaneRenderer implements IPrimitivePaneRenderer {
                 // Draw Text Label
                 if (zone.status !== 'Completed') {
                     let typeLabel: string = zone.type;
-                    if (zone.type === 'MagneticBlock') typeLabel = '🧲 MB';
-                    else if (zone.type === 'BombFireBlock') typeLabel = '💣🔥 BFB';
-                    else if (zone.type === 'IcebergBlock') typeLabel = '🧊 IB';
-                    else if (zone.type === 'WickBlock') typeLabel = '👁️ WB';
+                    if (zone.type === 'MagneticBlock') typeLabel = 'MB';
+                    else if (zone.type === 'BombFireBlock') typeLabel = 'BFB';
+                    else if (zone.type === 'IcebergBlock') typeLabel = 'IB';
+                    else if (zone.type === 'WickBlock') typeLabel = 'WB';
                     
                     if (zone.isInverted) typeLabel = `I-${typeLabel}`;
                     
-                    const labelText = `[${Math.round(zone.score)}] ${typeLabel} | ${zone.status}`;
+                    const emojiStr = zone.emoji ? `${zone.emoji} ` : '';
+                    const labelText = `[${Math.round(zone.score)}] ${emojiStr}${typeLabel} | ${zone.status}`;
                     ctx.font = `bold ${Math.round(11 * scope.horizontalPixelRatio)}px "Trebuchet MS", Arial, sans-serif`;
                     
                     // Dark theme contrast: white text

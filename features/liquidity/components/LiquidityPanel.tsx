@@ -70,6 +70,11 @@ export default function LiquidityPanel() {
                 <input type="checkbox" checked={settings.showLiquiditySweeps} onChange={() => toggleSetting('showLiquiditySweeps')} />
                 <span>💧 Show Sweeps</span>
             </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={settings.showTradeSetups} onChange={() => toggleSetting('showTradeSetups')} />
+                <span>🎯 Show Trade Setups</span>
+            </label>
         </div>
     );
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { useStore } from '@/store/store';
 import { ZoneStatus, LiquiditySetup, MarketBias, DashboardMetrics, Direction, LiquiditySettings } from '@/store/slices/liquiditySlice';
 
-export type LiquidityType = 'FVG' | 'WickBlock' | 'IcebergBlock' | 'BombFireBlock' | 'MagneticBlock' | 'InstitutionalZone' | 'LiquiditySweep';
+export type LiquidityType = 'FVG' | 'WickBlock' | 'IcebergBlock' | 'BombFireBlock' | 'MagneticBlock' | 'LiquiditySweep';
 
 export interface LiquidityZone {
     id: string;
@@ -22,6 +22,7 @@ export interface LiquidityZone {
     magnetStrength?: number;
     isInverted?: boolean;
     invertedTime?: number;
+    emoji?: string;
 }
 
 // Helper: Determine if TF is high timeframe for Iceberg blocks
@@ -174,18 +175,20 @@ export function useLiquidityEngine(
             if (config.showLiquiditySweeps) {
                 if (sweptHigh) {
                     zones.push({
-                        id: `sweep-bear-${c.time}`, type: 'LiquiditySweep', direction: 'bearish',
+                        id: `sweep-high-${c.time}`, type: 'LiquiditySweep', direction: 'bearish',
                         startTime: c.time as Time, endTime: c.time as Time,
                         topPrice: c.high, bottomPrice: Math.max(c.open, c.close),
-                        status: 'Completed', score: 60, timeframe: tf, confluenceFactors: ['Strict Sweep']
+                        status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['5-Candle High Sweep'],
+                        emoji: '❌'
                     });
                 }
                 if (sweptLow) {
                     zones.push({
-                        id: `sweep-bull-${c.time}`, type: 'LiquiditySweep', direction: 'bullish',
+                        id: `sweep-low-${c.time}`, type: 'LiquiditySweep', direction: 'bullish',
                         startTime: c.time as Time, endTime: c.time as Time,
                         topPrice: Math.min(c.open, c.close), bottomPrice: c.low,
-                        status: 'Completed', score: 60, timeframe: tf, confluenceFactors: ['Strict Sweep']
+                        status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['5-Candle Low Sweep'],
+                        emoji: '💧'
                     });
                 }
             }
@@ -206,7 +209,8 @@ export function useLiquidityEngine(
                         id: `ib-${c.time}`, type: 'IcebergBlock', direction: isBullish ? 'bullish' : 'bearish',
                         startTime: c.time as Time, endTime: c.time as Time,
                         topPrice: topP, bottomPrice: botP,
-                        status: 'Detected', score: 70, timeframe: tf, confluenceFactors: ['Powerful Candle', '> 1.5x SMA']
+                        status: 'Detected', score: 70, timeframe: tf, confluenceFactors: ['Powerful Candle', '> 1.5x SMA'],
+                        emoji: '🧊'
                     });
                 }
             }
@@ -221,7 +225,8 @@ export function useLiquidityEngine(
                         id: `wb-bear-${c.time}`, type: 'WickBlock', direction: 'bearish',
                         startTime: c.time as Time, endTime: c.time as Time,
                         topPrice: c.high, bottomPrice: Math.max(c.open, c.close),
-                        status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['Strict Wick', 'Sweep']
+                        status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['Strict Wick', 'Sweep'],
+                        emoji: '👁️'
                     });
                 }
                 if (sweptLow && lowerWick / range > 0.5) {
@@ -229,7 +234,8 @@ export function useLiquidityEngine(
                         id: `wb-bull-${c.time}`, type: 'WickBlock', direction: 'bullish',
                         startTime: c.time as Time, endTime: c.time as Time,
                         topPrice: Math.min(c.open, c.close), bottomPrice: c.low,
-                        status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['Strict Wick', 'Sweep']
+                        status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['Strict Wick', 'Sweep'],
+                        emoji: '👁️'
                     });
                 }
             }
@@ -281,7 +287,8 @@ export function useLiquidityEngine(
                                     id: `bfb-weak-bull-${c.time}`, type: 'BombFireBlock', direction: 'bullish',
                                     startTime: manip.time as Time, endTime: c.time as Time,
                                     topPrice: Math.max(c.open, c.close), bottomPrice: Math.min(c.open, c.close),
-                                    status: 'Triggered', score: 70, timeframe: tf, confluenceFactors: ['Weak BFB']
+                                    status: 'Triggered', score: 70, timeframe: tf, confluenceFactors: ['Weak BFB'],
+                                    emoji: '💣🔥'
                                 });
                             } else if (bearishCandles.length >= 2 && bearishCandles[bearishCandles.length - 1] === c) {
                                 const c1 = bearishCandles[0];
@@ -295,7 +302,8 @@ export function useLiquidityEngine(
                                         id: `bfb-strong-bull-${c.time}`, type: 'BombFireBlock', direction: 'bullish',
                                         startTime: manip.time as Time, endTime: c.time as Time,
                                         topPrice: Math.min(c2.open, c2.close), bottomPrice: c2.low,
-                                        status: 'Triggered', score: 95, timeframe: tf, confluenceFactors: ['Strong BFB']
+                                        status: 'Triggered', score: 95, timeframe: tf, confluenceFactors: ['Strong BFB'],
+                                        emoji: '💣🔥'
                                     });
                                 } else if (bearishCandles.length >= 3 && bearishCandles[2] === c) {
                                     // MEDIUM BFB
@@ -305,7 +313,8 @@ export function useLiquidityEngine(
                                         id: `bfb-med-bull-${c.time}`, type: 'BombFireBlock', direction: 'bullish',
                                         startTime: manip.time as Time, endTime: c.time as Time,
                                         topPrice: c2Mid, bottomPrice: c3.low,
-                                        status: 'Triggered', score: 85, timeframe: tf, confluenceFactors: ['Medium BFB']
+                                        status: 'Triggered', score: 85, timeframe: tf, confluenceFactors: ['Medium BFB'],
+                                        emoji: '💣🔥'
                                     });
                                 }
                             }
@@ -336,7 +345,8 @@ export function useLiquidityEngine(
                                     id: `bfb-weak-bear-${c.time}`, type: 'BombFireBlock', direction: 'bearish',
                                     startTime: manip.time as Time, endTime: c.time as Time,
                                     topPrice: Math.max(c.open, c.close), bottomPrice: Math.min(c.open, c.close),
-                                    status: 'Triggered', score: 70, timeframe: tf, confluenceFactors: ['Weak BFB']
+                                    status: 'Triggered', score: 70, timeframe: tf, confluenceFactors: ['Weak BFB'],
+                                    emoji: '💣🔥'
                                 });
                             } else if (bullishCandles.length >= 2 && bullishCandles[bullishCandles.length - 1] === c) {
                                 const c1 = bullishCandles[0];
@@ -349,7 +359,8 @@ export function useLiquidityEngine(
                                         id: `bfb-strong-bear-${c.time}`, type: 'BombFireBlock', direction: 'bearish',
                                         startTime: manip.time as Time, endTime: c.time as Time,
                                         topPrice: c2.high, bottomPrice: Math.max(c2.open, c2.close),
-                                        status: 'Triggered', score: 95, timeframe: tf, confluenceFactors: ['Strong BFB']
+                                        status: 'Triggered', score: 95, timeframe: tf, confluenceFactors: ['Strong BFB'],
+                                        emoji: '💣🔥'
                                     });
                                 } else if (bullishCandles.length >= 3 && bullishCandles[2] === c) {
                                     // MEDIUM BFB
@@ -359,7 +370,8 @@ export function useLiquidityEngine(
                                         id: `bfb-med-bear-${c.time}`, type: 'BombFireBlock', direction: 'bearish',
                                         startTime: manip.time as Time, endTime: c.time as Time,
                                         topPrice: c3.high, bottomPrice: c2Mid,
-                                        status: 'Triggered', score: 85, timeframe: tf, confluenceFactors: ['Medium BFB']
+                                        status: 'Triggered', score: 85, timeframe: tf, confluenceFactors: ['Medium BFB'],
+                                        emoji: '💣🔥'
                                     });
                                 }
                             }
@@ -380,7 +392,8 @@ export function useLiquidityEngine(
                             id: `fvg-bull-${c.time}`, type: 'FVG', direction: 'bullish',
                             startTime: cPrev2.time as Time, endTime: c.time as Time,
                             topPrice: c.low, bottomPrice: cPrev2.high,
-                            status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['Discount FVG', 'Origin Sweep']
+                            status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['Discount FVG', 'Origin Sweep'],
+                            emoji: '📦'
                         });
                     }
                 } else if (cPrev2.low > c.high) { // Bearish FVG
@@ -389,7 +402,8 @@ export function useLiquidityEngine(
                             id: `fvg-bear-${c.time}`, type: 'FVG', direction: 'bearish',
                             startTime: cPrev2.time as Time, endTime: c.time as Time,
                             topPrice: cPrev2.low, bottomPrice: c.high,
-                            status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['Premium FVG', 'Origin Sweep']
+                            status: 'Detected', score: 85, timeframe: tf, confluenceFactors: ['Premium FVG', 'Origin Sweep'],
+                            emoji: '📦'
                         });
                     }
                 }
@@ -430,7 +444,8 @@ export function useLiquidityEngine(
                                 topPrice: targetOB.open, bottomPrice: targetOB.close,
                                 status: 'Detected', score: 80, timeframe: tf, confluenceFactors: ['Strict Consolidation Target'],
                                 distance: Math.abs(currentPrice - (isBullishExp ? targetOB.close : targetOB.open)), 
-                                magnetStrength: 100
+                                magnetStrength: 100,
+                                emoji: '🧲'
                             });
                         }
                     }
