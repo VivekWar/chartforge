@@ -2,7 +2,7 @@ import { type StateCreator } from 'zustand';
 import { type RootState } from '@/store/types';
 
 export type MarketBias = 'Bullish' | 'Bearish' | 'Neutral';
-export type ZoneStatus = 'Detected' | 'Triggered' | 'Tapped' | 'Partially Filled' | 'Completed' | 'Invalidated' | 'Inverted';
+export type ZoneStatus = 'Detected' | 'Activated' | 'Triggered' | 'Tapped' | 'Partially Filled' | 'Completed' | 'Invalidated' | 'Inverted';
 export type Direction = 'bullish' | 'bearish' | 'neutral';
 
 export interface LiquiditySetup {
@@ -50,6 +50,7 @@ export interface LiquiditySettings {
     showMagneticBlocks: boolean;
     showLiquiditySweeps: boolean;
     showInstitutionalZones: boolean;
+    strictMode: boolean;
 }
 
 export interface LiquiditySlice {
@@ -75,6 +76,7 @@ export const createLiquiditySlice: StateCreator<
         showMagneticBlocks: true,
         showLiquiditySweeps: true,
         showInstitutionalZones: true,
+        strictMode: false,
     },
     dashboardMetrics: {
         bias: 'Neutral',

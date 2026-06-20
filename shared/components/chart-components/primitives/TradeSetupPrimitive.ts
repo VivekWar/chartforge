@@ -38,17 +38,17 @@ class TradeSetupPrimitiveRenderer implements IPrimitivePaneRenderer {
 
             // Draw Stop Loss Box (Red)
             const slHeight = actualSlY - actualEntryY;
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.2)'; // Red 500
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'; // Strict Red
             ctx.fillRect(actualStartX, actualEntryY, width, slHeight);
             
             // Draw Take Profit Box (Green)
             const tpHeight = actualTpY - actualEntryY;
-            ctx.fillStyle = 'rgba(34, 197, 94, 0.2)'; // Green 500
+            ctx.fillStyle = 'rgba(34, 197, 94, 0.15)'; // Strict Green
             ctx.fillRect(actualStartX, actualEntryY, width, tpHeight);
 
             // Draw Entry Line (Dashed)
             ctx.beginPath();
-            ctx.setLineDash([5 * scope.horizontalPixelRatio, 5 * scope.horizontalPixelRatio]);
+            ctx.setLineDash([4, 4]); // Strict dash
             ctx.moveTo(actualStartX, actualEntryY);
             ctx.lineTo(endX, actualEntryY);
             ctx.strokeStyle = '#fff';
@@ -56,12 +56,14 @@ class TradeSetupPrimitiveRenderer implements IPrimitivePaneRenderer {
             ctx.stroke();
             ctx.setLineDash([]); // Reset dash
 
-            // Draw R/R Text
-            const textY = actualEntryY - (10 * scope.verticalPixelRatio);
-            ctx.font = `${Math.round(12 * scope.horizontalPixelRatio)}px Inter, sans-serif`;
+            // Draw R/R Text in Center
+            ctx.font = `bold ${Math.round(12 * scope.horizontalPixelRatio)}px "Trebuchet MS", Arial, sans-serif`;
             ctx.fillStyle = '#fff';
-            ctx.textAlign = 'left';
-            ctx.fillText(`R/R: ${this._setup.riskRewardRatio.toFixed(2)} | ${this._setup.status}`, actualStartX + 10, textY);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            const centerX = actualStartX + (width / 2);
+            const textY = actualEntryY - (4 * scope.verticalPixelRatio);
+            ctx.fillText(`R/R: ${this._setup.riskRewardRatio.toFixed(2)}`, centerX, textY);
         });
     }
 

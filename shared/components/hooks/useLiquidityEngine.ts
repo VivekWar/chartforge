@@ -20,6 +20,8 @@ export interface LiquidityZone {
     confluenceFactors: string[];
     distance?: number;
     magnetStrength?: number;
+    isInverted?: boolean;
+    invertedTime?: number;
 }
 
 // Helper: Determine if TF is high timeframe for Iceberg blocks
@@ -67,6 +69,8 @@ function getZoneStatus(
                 if (zone.direction === 'bullish') {
                     if (c.close < zone.bottomPrice) {
                         status = 'Inverted'; // ENIGMA IFVG Flip
+                        zone.isInverted = true;
+                        zone.invertedTime = c.time as number;
                     } else {
                         if (c.low <= zone.bottomPrice) return 'Completed';
                         if (c.low <= midpoint) status = 'Partially Filled';
@@ -75,6 +79,8 @@ function getZoneStatus(
                 } else {
                     if (c.close > zone.topPrice) {
                         status = 'Inverted'; // ENIGMA IFVG Flip
+                        zone.isInverted = true;
+                        zone.invertedTime = c.time as number;
                     } else {
                         if (c.high >= zone.topPrice) return 'Completed';
                         if (c.high >= midpoint) status = 'Partially Filled';
@@ -254,28 +260,54 @@ export function useLiquidityEngine(
                         // Let's refine:
                         const activationIdx = candles.findIndex((ca, idx) => idx > i - j && ca.close > manip.high);
                         if (activationIdx !== -1 && i > activationIdx) {
-                            // Find 2nd consecutive bearish candle after activation
-                            let bearishCount = 0;
-                            let bfbTarget: CandleType | null = null;
+                            let bearishCandles: CandleType[] = [];
+                            let brokenByOpposite: CandleType | null = null;
+
+                            // Scan from activation onwards
                             for (let k = activationIdx + 1; k <= i; k++) {
                                 if (candles[k].close < candles[k].open) {
-                                    bearishCount++;
-                                    if (bearishCount === 2) {
-                                        bfbTarget = candles[k];
+                                    bearishCandles.push(candles[k]);
+                                } else {
+                                    if (bearishCandles.length > 0) {
+                                        brokenByOpposite = candles[k];
                                         break;
                                     }
-                                } else {
-                                    bearishCount = 0; // Must be consecutive
                                 }
                             }
 
-                            if (bfbTarget && bfbTarget === c) {
+                            if (brokenByOpposite && brokenByOpposite === c) {
+                                // WEAK BFB
                                 zones.push({
-                                    id: `bfb-bull-${c.time}`, type: 'BombFireBlock', direction: 'bullish',
+                                    id: `bfb-weak-bull-${c.time}`, type: 'BombFireBlock', direction: 'bullish',
                                     startTime: manip.time as Time, endTime: c.time as Time,
-                                    topPrice: Math.min(c.open, c.close), bottomPrice: c.low,
-                                    status: 'Triggered', score: 90, timeframe: tf, confluenceFactors: ['BFB Math']
+                                    topPrice: Math.max(c.open, c.close), bottomPrice: Math.min(c.open, c.close),
+                                    status: 'Triggered', score: 70, timeframe: tf, confluenceFactors: ['Weak BFB']
                                 });
+                            } else if (bearishCandles.length >= 2 && bearishCandles[bearishCandles.length - 1] === c) {
+                                const c1 = bearishCandles[0];
+                                const c2 = bearishCandles[1];
+                                const lowerWickC2 = Math.min(c2.open, c2.close) - c2.low;
+                                
+                                if (lowerWickC2 > 0) {
+                                    // STRONG BFB
+                                    // Swallow rule: if c2 sweeps c1's low, shift indices forward (handled implicitly if we just use c2's wick)
+                                    zones.push({
+                                        id: `bfb-strong-bull-${c.time}`, type: 'BombFireBlock', direction: 'bullish',
+                                        startTime: manip.time as Time, endTime: c.time as Time,
+                                        topPrice: Math.min(c2.open, c2.close), bottomPrice: c2.low,
+                                        status: 'Triggered', score: 95, timeframe: tf, confluenceFactors: ['Strong BFB']
+                                    });
+                                } else if (bearishCandles.length >= 3 && bearishCandles[2] === c) {
+                                    // MEDIUM BFB
+                                    const c3 = bearishCandles[2];
+                                    const c2Mid = (c2.open + c2.close) / 2;
+                                    zones.push({
+                                        id: `bfb-med-bull-${c.time}`, type: 'BombFireBlock', direction: 'bullish',
+                                        startTime: manip.time as Time, endTime: c.time as Time,
+                                        topPrice: c2Mid, bottomPrice: c3.low,
+                                        status: 'Triggered', score: 85, timeframe: tf, confluenceFactors: ['Medium BFB']
+                                    });
+                                }
                             }
                         }
                         break;
@@ -284,27 +316,52 @@ export function useLiquidityEngine(
                     if (manipSweptHigh && c.close < manip.low) {
                         const activationIdx = candles.findIndex((ca, idx) => idx > i - j && ca.close < manip.low);
                         if (activationIdx !== -1 && i > activationIdx) {
-                            let bullishCount = 0;
-                            let bfbTarget: CandleType | null = null;
+                            let bullishCandles: CandleType[] = [];
+                            let brokenByOpposite: CandleType | null = null;
+
                             for (let k = activationIdx + 1; k <= i; k++) {
                                 if (candles[k].close > candles[k].open) {
-                                    bullishCount++;
-                                    if (bullishCount === 2) {
-                                        bfbTarget = candles[k];
+                                    bullishCandles.push(candles[k]);
+                                } else {
+                                    if (bullishCandles.length > 0) {
+                                        brokenByOpposite = candles[k];
                                         break;
                                     }
-                                } else {
-                                    bullishCount = 0;
                                 }
                             }
 
-                            if (bfbTarget && bfbTarget === c) {
+                            if (brokenByOpposite && brokenByOpposite === c) {
+                                // WEAK BFB
                                 zones.push({
-                                    id: `bfb-bear-${c.time}`, type: 'BombFireBlock', direction: 'bearish',
+                                    id: `bfb-weak-bear-${c.time}`, type: 'BombFireBlock', direction: 'bearish',
                                     startTime: manip.time as Time, endTime: c.time as Time,
-                                    topPrice: c.high, bottomPrice: Math.max(c.open, c.close),
-                                    status: 'Triggered', score: 90, timeframe: tf, confluenceFactors: ['BFB Math']
+                                    topPrice: Math.max(c.open, c.close), bottomPrice: Math.min(c.open, c.close),
+                                    status: 'Triggered', score: 70, timeframe: tf, confluenceFactors: ['Weak BFB']
                                 });
+                            } else if (bullishCandles.length >= 2 && bullishCandles[bullishCandles.length - 1] === c) {
+                                const c1 = bullishCandles[0];
+                                const c2 = bullishCandles[1];
+                                const upperWickC2 = c2.high - Math.max(c2.open, c2.close);
+
+                                if (upperWickC2 > 0) {
+                                    // STRONG BFB
+                                    zones.push({
+                                        id: `bfb-strong-bear-${c.time}`, type: 'BombFireBlock', direction: 'bearish',
+                                        startTime: manip.time as Time, endTime: c.time as Time,
+                                        topPrice: c2.high, bottomPrice: Math.max(c2.open, c2.close),
+                                        status: 'Triggered', score: 95, timeframe: tf, confluenceFactors: ['Strong BFB']
+                                    });
+                                } else if (bullishCandles.length >= 3 && bullishCandles[2] === c) {
+                                    // MEDIUM BFB
+                                    const c3 = bullishCandles[2];
+                                    const c2Mid = (c2.open + c2.close) / 2;
+                                    zones.push({
+                                        id: `bfb-med-bear-${c.time}`, type: 'BombFireBlock', direction: 'bearish',
+                                        startTime: manip.time as Time, endTime: c.time as Time,
+                                        topPrice: c3.high, bottomPrice: c2Mid,
+                                        status: 'Triggered', score: 85, timeframe: tf, confluenceFactors: ['Medium BFB']
+                                    });
+                                }
                             }
                         }
                         break;
@@ -381,69 +438,22 @@ export function useLiquidityEngine(
             }
         }
 
-        // --- LIFECYCLE ENGINE ---
+        // --- LIFECYCLE & CORE FILTERS ---
         for (const zone of zones) {
             const startIndex = candles.findIndex(c => c.time === zone.endTime);
             if (startIndex !== -1) {
                 const futureCandles = candles.slice(startIndex + 1);
                 zone.status = getZoneStatus(zone, futureCandles);
             }
-        }
 
-        // --- NARRATIVE SETUP ENGINE ---
-        let topSetup: LiquiditySetup | null = null;
-        let highestConfidence = 0;
-
-        // Try to chain Sweep -> WB -> FVG
-        const wbs = zones.filter(z => z.type === 'WickBlock');
-        const fvgs = zones.filter(z => z.type === 'FVG');
-        
-        for (const wb of wbs) {
-            const associatedFvgs = fvgs.filter(f => f.direction === wb.direction && f.startTime >= wb.startTime && (f.startTime as number) <= (wb.startTime as number) + 10);
-            if (associatedFvgs.length > 0) {
-                const confidence = 90 + associatedFvgs.length * 2;
-                if (confidence > highestConfidence) {
-                    highestConfidence = confidence;
-                    topSetup = {
-                        id: `setup-${wb.id}`,
-                        direction: wb.direction,
-                        confidence,
-                        components: ['Liquidity Sweep', 'Wick Block', 'MSS', 'FVG'],
-                        status: wb.status === 'Invalidated' ? 'Invalidated' : 'Triggered',
-                        entryPrice: associatedFvgs[0].topPrice,
-                        targetPrice: wb.direction === 'bullish' ? macroHigh : macroLow,
-                        invalidationPrice: wb.direction === 'bullish' ? wb.bottomPrice : wb.topPrice
-                    };
-                }
+            // Premium / Discount Penalties
+            const zoneMid = (zone.topPrice + zone.bottomPrice) / 2;
+            if (zone.direction === 'bullish' && zoneMid > equilibrium) {
+                zone.score -= 40; // Bullish in Premium
+            } else if (zone.direction === 'bearish' && zoneMid < equilibrium) {
+                zone.score -= 40; // Bearish in Discount
             }
         }
-
-        // --- SMART DASHBOARD METRICS ---
-        const activeTargets = zones
-            .filter(z => z.type === 'MagneticBlock' && z.status !== 'Completed' && z.status !== 'Invalidated')
-            .map(z => ({ id: z.id, type: z.type, price: (z.topPrice + z.bottomPrice)/2, distance: z.distance || 0 }))
-            .sort((a,b) => a.distance - b.distance)
-            .slice(0, 3);
-
-        const summary = { detected: 0, triggered: 0, tapped: 0, partiallyFilled: 0, completed: 0, invalidated: 0 };
-        for (const z of zones) {
-            if (z.status === 'Detected') summary.detected++;
-            else if (z.status === 'Triggered') summary.triggered++;
-            else if (z.status === 'Tapped') summary.tapped++;
-            else if (z.status === 'Partially Filled') summary.partiallyFilled++;
-            else if (z.status === 'Completed') summary.completed++;
-            else if (z.status === 'Invalidated') summary.invalidated++;
-        }
-
-        // Update Zustand via setTimeout to avoid render cycle warning
-        setTimeout(() => {
-            setDashboardMetrics({
-                bias,
-                topSetup,
-                activeTargets,
-                zoneSummary: summary
-            });
-        }, 0);
 
         // --- RENDER FILTERING ---
         let renderZones = zones.filter(z => z.status !== 'Completed');
@@ -453,14 +463,19 @@ export function useLiquidityEngine(
             if (z.type === 'WickBlock') return config.showWickBlocks;
             if (z.type === 'IcebergBlock') return config.showIcebergBlocks;
             if (z.type === 'MagneticBlock') return config.showMagneticBlocks;
+            if (z.type === 'BombFireBlock') return config.showBombFireBlocks;
             if (z.type === 'LiquiditySweep') return config.showLiquiditySweeps;
             return true;
         });
 
+        if (config.strictMode) {
+            renderZones = renderZones.filter(z => z.score >= 80);
+        }
+
         // Top 10 Active
         const activeDisplay = renderZones.filter(z => z.status !== 'Invalidated').sort((a, b) => b.score - a.score).slice(0, 10);
         // Show Invalidated ghosted if needed
-        const invalidDisplay = renderZones.filter(z => z.status === 'Invalidated').slice(-5);
+        const invalidDisplay = renderZones.filter(z => z.status === 'Invalidated' || z.status === 'Completed').slice(-15);
 
         return [...activeDisplay, ...invalidDisplay];
 

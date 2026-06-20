@@ -72,21 +72,58 @@ class LiquidityPaneRenderer implements IPrimitivePaneRenderer {
                 else if (zone.status === 'Inverted') alpha = 0.3; // High opacity for flipped zone
 
                 // Fill Background
-                ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${alpha})`;
-                ctx.fillRect(actualStartX, actualTopY, width, height);
+                if (zone.type === 'LiquiditySweep') {
+                    // Draw Sweep Icon instead of fillRect
+                    ctx.font = `${Math.round(14 * scope.horizontalPixelRatio)}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const iconY = zone.direction === 'bullish' ? actualBottomY : actualTopY;
+                    const iconX = actualStartX + (4 * scope.horizontalPixelRatio);
+                    ctx.fillText(zone.direction === 'bullish' ? '💧' : '❌', iconX, iconY);
+                    continue; // Skip the rest of the drawing for sweeps
+                }
 
-                // Draw Solid Border
-                ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${zone.status === 'Invalidated' ? 0.2 : 1})`;
-                ctx.lineWidth = 1 * scope.horizontalPixelRatio;
-                ctx.strokeRect(actualStartX, actualTopY, width, height);
+                if (zone.status === 'Completed' || zone.status === 'Invalidated') {
+                    // Ghosting UX
+                    ctx.fillStyle = 'rgba(156, 163, 175, 0.05)';
+                    ctx.fillRect(actualStartX, actualTopY, width, height);
+                    ctx.strokeStyle = 'rgba(156, 163, 175, 0.3)';
+                    ctx.lineWidth = 1 * scope.horizontalPixelRatio;
+                    ctx.setLineDash([2, 4]);
+                    ctx.strokeRect(actualStartX, actualTopY, width, height);
+                    ctx.setLineDash([]);
+                } else if (zone.isInverted) {
+                    // Flipped Polarity UX
+                    ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 0.1)`;
+                    ctx.fillRect(actualStartX, actualTopY, width, height);
+                    ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 0.8)`;
+                    ctx.lineWidth = 1 * scope.horizontalPixelRatio;
+                    ctx.setLineDash([2, 2]);
+                    ctx.strokeRect(actualStartX, actualTopY, width, height);
+                    ctx.setLineDash([]);
+                } else {
+                    ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${alpha})`;
+                    ctx.fillRect(actualStartX, actualTopY, width, height);
+                    ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 1)`;
+                    ctx.lineWidth = 1 * scope.horizontalPixelRatio;
+                    ctx.strokeRect(actualStartX, actualTopY, width, height);
+                }
 
                 // Draw Text Label
                 if (zone.status !== 'Completed') {
-                    const typeLabel = zone.status === 'Inverted' ? `I${zone.type}` : zone.type;
+                    let typeLabel: string = zone.type;
+                    if (zone.type === 'MagneticBlock') typeLabel = '🧲 MB';
+                    else if (zone.type === 'BombFireBlock') typeLabel = '💣🔥 BFB';
+                    else if (zone.type === 'IcebergBlock') typeLabel = '🧊 IB';
+                    else if (zone.type === 'WickBlock') typeLabel = '👁️ WB';
+                    
+                    if (zone.isInverted) typeLabel = `I-${typeLabel}`;
+                    
                     const labelText = `[${Math.round(zone.score)}] ${typeLabel} | ${zone.status}`;
-                    ctx.font = `${Math.round(11 * scope.horizontalPixelRatio)}px Inter, sans-serif`;
-                    // If invalidated, make text ghosted as well
-                    ctx.fillStyle = zone.status === 'Invalidated' ? `rgba(${baseR}, ${baseG}, ${baseB}, 0.5)` : `rgba(${baseR}, ${baseG}, ${baseB}, 1)`;
+                    ctx.font = `bold ${Math.round(11 * scope.horizontalPixelRatio)}px "Trebuchet MS", Arial, sans-serif`;
+                    
+                    // Dark theme contrast: white text
+                    ctx.fillStyle = zone.status === 'Invalidated' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.8)';
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
                     

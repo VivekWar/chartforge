@@ -22,7 +22,9 @@ import { useLiquidityEngine } from '@/shared/components/hooks/useLiquidityEngine
 import { LiquidityZonePrimitive } from '@/shared/components/chart-components/primitives/LiquidityZonePrimitive';
 import { useEnigmaTrader } from '@/shared/components/hooks/useEnigmaTrader';
 import { TradeSetupPrimitive } from '@/shared/components/chart-components/primitives/TradeSetupPrimitive';
+import { OTEBackgroundPrimitive } from '@/shared/components/chart-components/primitives/OTEBackgroundPrimitive';
 import { TimeFrameType } from '@/shared/types/common';
+import LiquidityPanel from '@/features/liquidity/components/LiquidityPanel';
 
 type Props = {
     indicatorIds: string[];
@@ -87,6 +89,7 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
 
     const combinedZones = useMemo(() => [...microZones, ...mappedMacroZones], [microZones, mappedMacroZones]);
 
+    const otePrimitiveRef = useRef<OTEBackgroundPrimitive>(new OTEBackgroundPrimitive());
     const liquidityPrimitiveRef = useRef<LiquidityZonePrimitive>(new LiquidityZonePrimitive());
     const tradeSetupPrimitiveRef = useRef<TradeSetupPrimitive | null>(null);
 
@@ -95,7 +98,7 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
         tradeSetupPrimitiveRef.current = new TradeSetupPrimitive(activeSetup);
     }
 
-    const [primitives, setPrimitives] = useState<any[]>([liquidityPrimitiveRef.current]);
+    const [primitives, setPrimitives] = useState<any[]>([otePrimitiveRef.current, liquidityPrimitiveRef.current]);
 
     useEffect(() => {
         if (activeSetup) {
@@ -103,16 +106,31 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
             else tradeSetupPrimitiveRef.current.update(activeSetup);
             
             if (!primitives.includes(tradeSetupPrimitiveRef.current)) {
-                setPrimitives([liquidityPrimitiveRef.current, tradeSetupPrimitiveRef.current]);
+                setPrimitives([otePrimitiveRef.current, liquidityPrimitiveRef.current, tradeSetupPrimitiveRef.current]);
             }
         } else if (!activeSetup && tradeSetupPrimitiveRef.current && primitives.includes(tradeSetupPrimitiveRef.current)) {
-            setPrimitives([liquidityPrimitiveRef.current]);
+            setPrimitives([otePrimitiveRef.current, liquidityPrimitiveRef.current]);
         }
     }, [activeSetup, primitives]);
 
     useEffect(() => {
         liquidityPrimitiveRef.current.updateZones(combinedZones);
     }, [combinedZones]);
+
+    useEffect(() => {
+        // Calculate macro high/low for OTE background
+        if (candles.length > 50) {
+            const limit = 500;
+            const recent = candles.slice(Math.max(0, candles.length - limit));
+            let maxH = -Infinity;
+            let minL = Infinity;
+            for (const c of recent) {
+                if (c.high > maxH) maxH = c.high;
+                if (c.low < minL) minL = c.low;
+            }
+            otePrimitiveRef.current.updateBounds(maxH, minL);
+        }
+    }, [candles]);
 
     useEffect(
         function () {
@@ -153,6 +171,7 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
 
     return (
         <CustomPane legendApi={legendApi} stretchFactor={stretchFactor}>
+            <LiquidityPanel />
             <CustomCandlestickSeries
                 data={chartCandles}
                 options={{
