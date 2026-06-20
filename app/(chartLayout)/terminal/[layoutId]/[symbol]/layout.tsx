@@ -22,31 +22,28 @@ export default async function layout({
     const { layoutId, symbol } = await params;
     if (!symbol || !layoutId) return notFound();
     const layoutData = await getChartLayout(layoutId);
-    // console.log(symbol);
+    
     return (
         <BinanceSocketProvider>
-            {/* <div className="flex flex-col h-screen min-h-0"> */}
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full w-full overflow-hidden bg-background">
                 <LayoutHeader />
-                <div className="flex-1 min-h-0 min-w-0">
-                    {
-                        <Suspense fallback={<LayoutLoading />}>
-                            <LayoutInit initialLayout={layoutData}>
-                                <ChartDataInit
+                <div className="flex-1 min-h-0 min-w-0 flex flex-col relative bg-surface overflow-hidden border-t border-surface-border shadow-inner">
+                    <Suspense fallback={<LayoutLoading />}>
+                        <LayoutInit initialLayout={layoutData}>
+                            <ChartDataInit
+                                initialLayout={layoutData}
+                                symbol={symbol}
+                            >
+                                <IndicatorDataInit
                                     initialLayout={layoutData}
-                                    symbol={symbol}
                                 >
-                                    <IndicatorDataInit
-                                        initialLayout={layoutData}
-                                    >
-                                        <PaneInit initialLayout={layoutData}>
-                                            {children}
-                                        </PaneInit>
-                                    </IndicatorDataInit>
-                                </ChartDataInit>
-                            </LayoutInit>
-                        </Suspense>
-                    }
+                                    <PaneInit initialLayout={layoutData}>
+                                        {children}
+                                    </PaneInit>
+                                </IndicatorDataInit>
+                            </ChartDataInit>
+                        </LayoutInit>
+                    </Suspense>
                 </div>
             </div>
         </BinanceSocketProvider>

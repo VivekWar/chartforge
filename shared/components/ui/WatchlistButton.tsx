@@ -3,8 +3,8 @@ import React from 'react';
 
 export default function WatchlistButton() {
     return (
-        <button className="rounded-xl flex items-center min-w-30 justify-center gap-2 text-xl cursor-pointer">
-            <ListBulletIcon className="w-5 h-5 text-gray-300" />
+        <button className="flex items-center px-3 py-1.5 gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-hover rounded-md transition-colors cursor-pointer w-full justify-center md:w-auto">
+            <ListBulletIcon className="w-4 h-4" />
             Watchlist
         </button>
     );

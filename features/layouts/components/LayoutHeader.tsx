@@ -1,9 +1,6 @@
-import Divider from '@/shared/components/ui/Divider';
-// import TimeFrameList from ' ui/TimeFrameList';
 import TimeFrameList from '@/shared/components/ui/TimeFrameList';
 import LayoutModal from '@/features/layouts/components/LayoutModal';
-import GridChartIcon from '@/shared/components/ui/GridChartIcon';
-import LayoutSelector from '@/features/layouts/components/LayoutSelector';
+
 import ModeToggle from '@/shared/components/ui/ModeToggle';
 import IndicatorButton from '@/shared/components/ui/IndicatorButton';
 import IndicatorSelector from '@/features/layouts/components/IndicatorSelector';
@@ -13,64 +10,71 @@ import TimeframeButton from '../../../shared/components/ui/TimeFrameButton';
 import { getAllLayout } from '@/lib/data-service';
 import SearchSymbol from '../../../shared/components/ui/SearchSymbol';
 import SearchButton from '@/shared/components/ui/SearchButton';
-import NavDrawer from '@/shared/components/ui/NavDrawer';
+import Link from 'next/link';
 import WatchlistButton from '@/shared/components/ui/WatchlistButton';
 import Watchlist from '@/features/watchlist/components/Watchlist';
+import AppLogo from '@/shared/components/ui/AppLogo';
+
 export default async function LayoutHeader() {
-    const layouts = await getAllLayout();
     return (
-        <header className="flex justify-between px-3 py-1 overflow-x-scroll overflow-y-clip max-w-screen bg-panel h-10 border-b border-active-border">
-            <div className="flex gap-2 overflow-y-clip h-full">
-                {/* <UserAvatar /> */}
-                <NavDrawer />
-                <Divider />
-                <SearchSymbol>
-                    <SearchButton />
-                </SearchSymbol>
-                <Divider />
-                <LayoutModal
-                    source={<TimeframeButton />}
-                    possition={{ top: -10, left: 0 }}
-                >
-                    <TimeFrameList />
-                </LayoutModal>
+        <header className="flex justify-between items-center px-4 py-2 overflow-x-auto overflow-y-clip w-full bg-surface border-b border-surface-border shadow-sm min-h-[50px]">
+            {/* Left Group: Asset & Timeframe */}
+            <div className="flex items-center gap-3 h-full">
+                <div className="hidden md:flex items-center mr-2">
+                    <AppLogo />
+                </div>
+                
+                <div className="flex items-center bg-card rounded-md p-1 border border-panel-border shadow-sm">
+                    <SearchSymbol>
+                        <SearchButton />
+                    </SearchSymbol>
+                    <div className="w-[1px] h-4 bg-surface-border mx-1" />
+                    <LayoutModal
+                        source={<TimeframeButton />}
+                        possition={{ top: 0, left: 0 }}
+                    >
+                        <TimeFrameList />
+                    </LayoutModal>
+                </div>
             </div>
 
-            <div className="flex gap-2 overflow-y-clip h-full ml-2">
-                <Divider classes="md2:hidden block" />
-                <LayoutModal
-                    source={<GridChartIcon rows={1} cols={1} size={25} />}
-                    possition={{ top: -10, left: 0 }}
-                >
-                    <LayoutSelector layouts={layouts} />
-                </LayoutModal>
-                <Divider />
-                <ModeToggle />
-                <Divider />
-                <LayoutModal
-                    source={<IndicatorButton />}
-                    possition={{ top: -10, left: 0 }}
-                >
-                    {/* <LayoutModal source={<SyncButton />}> */}
-                    <IndicatorSelector />
-                </LayoutModal>
-                <Divider />
-                <LayoutModal
-                    source={<SyncButton />}
-                    possition={{ top: -10, left: 0 }}
-                >
-                    <SyncSelector />
-                </LayoutModal>
-                <Divider />
-                <LayoutModal
-                    source={<WatchlistButton />}
-                    modalWidth={300}
-                    possition={{ top: -10, left: 0 }}
-                >
-                    <div className="h-130">
-                        <Watchlist isEditable={false} />
-                    </div>
-                </LayoutModal>
+            {/* Right Group: Tools & Navigation */}
+            <div className="flex items-center gap-3 h-full ml-auto">
+                <div className="flex items-center bg-card rounded-md p-1 border border-panel-border shadow-sm">
+                    <LayoutModal
+                        source={<IndicatorButton />}
+                        possition={{ top: 0, left: 0 }}
+                    >
+                        <IndicatorSelector />
+                    </LayoutModal>
+                    <div className="w-[1px] h-4 bg-surface-border mx-1" />
+                    <LayoutModal
+                        source={<SyncButton />}
+                        possition={{ top: 0, left: 0 }}
+                    >
+                        <SyncSelector />
+                    </LayoutModal>
+                </div>
+
+                <div className="flex items-center bg-card rounded-md p-1 border border-panel-border shadow-sm">
+                    <LayoutModal
+                        source={<WatchlistButton />}
+                        modalWidth={300}
+                        possition={{ top: 0, left: -250 }}
+                    >
+                        <div className="h-[500px]">
+                            <Watchlist isEditable={true} />
+                        </div>
+                    </LayoutModal>
+                    <div className="w-[1px] h-4 bg-surface-border mx-1" />
+                    <Link href="/watchlist" className="px-3 py-1 text-sm font-semibold text-primary hover:text-white hover:bg-primary transition-colors rounded-sm mx-1">
+                        Full Watchlist
+                    </Link>
+                </div>
+
+                <div className="hidden md:flex items-center bg-card rounded-md p-1 border border-panel-border shadow-sm ml-2">
+                    <ModeToggle />
+                </div>
             </div>
         </header>
     );

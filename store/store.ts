@@ -5,11 +5,14 @@ import { createChartLayoutSlice } from '@/store/slices/chartLayoutSlice';
 import { creatChartDataSlice } from '@/store/slices/chartDataSlice';
 import { createIndicatorDataSlice } from './slices/indicatorSlice';
 import { createPaneSlice } from './slices/paneSlice';
+import { createLiquiditySlice } from './slices/liquiditySlice';
+
 export const useStore = create<RootState>()(
     immer((...args) => ({
         ...createChartLayoutSlice(...args),
         ...creatChartDataSlice(...args),
         ...createIndicatorDataSlice(...args),
         ...createPaneSlice(...args),
+        ...createLiquiditySlice(...args),
     })),
 );

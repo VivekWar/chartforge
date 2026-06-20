@@ -8,6 +8,7 @@ import {
     DeepPartial,
     SeriesOptionsCommon,
     Time,
+    ISeriesPrimitive,
 } from 'lightweight-charts';
 import {
     CrosshairListener,
@@ -21,12 +22,14 @@ interface Props {
         | DeepPartial<CandlestickStyleOptions & SeriesOptionsCommon>
         | undefined;
     legendApi: PaneLegend;
+    primitives?: ISeriesPrimitive<Time>[];
 }
 
 export default function CustomCandlestickSeries({
     data,
     options,
     legendApi,
+    primitives,
 }: Props) {
     const candleSeriesRef = useRef<SeriesApiRef<'Candlestick'> | null>(null);
     useEffect(
@@ -93,12 +96,35 @@ export default function CustomCandlestickSeries({
                     },
                 ]);
                 candleSeries?.attachPrimitive(crosshairListener);
+                
+                // Attach custom primitives
+                if (primitives && candleSeries) {
+                    primitives.forEach((p) => {
+                        try {
+                            candleSeries.attachPrimitive(p);
+                        } catch (e) {
+                            // Primitive might already be attached
+                        }
+                    });
+                }
+
             }, 150);
             return () => {
                 clearTimeout(id);
+                // Detach primitives on unmount
+                if (candleSeriesRef.current) {
+                    const candleSeries = candleSeriesRef.current.api();
+                    if (candleSeries && primitives) {
+                        primitives.forEach((p) => {
+                            try {
+                                candleSeries.detachPrimitive(p);
+                            } catch (e) {}
+                        });
+                    }
+                }
             };
         },
-        [legendApi],
+        [legendApi, primitives],
     );
     return (
         <CandlestickSeries

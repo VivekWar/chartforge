@@ -9,13 +9,10 @@
         "lint": "eslint"
     },
     "dependencies": {
-        "@clerk/nextjs": "^7.0.1",
         "@heroicons/react": "^2.2.0",
         "@shismomin/lightweight-charts-react-components": "^1.4.1",
         "@shismomin/lwc-plugin-pracplugin": "^1.0.0",
         "@supabase/supabase-js": "^2.91.1",
-        "@tanstack/react-query": "^5.90.21",
-        "@tanstack/react-query-devtools": "^5.91.3",
         "@types/lodash": "^4.17.23",
         "binance-icons": "^0.5.1",
         "immer": "^11.1.3",

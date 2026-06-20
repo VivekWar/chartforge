@@ -106,7 +106,7 @@ export default function WatchlistTable({
                     }
                 }}
                 isRedirectable={isEditable}
-                to={isEditable ? `/overview/${c.symbol}` : ''}
+                to={isEditable ? `/terminal/1/${c.symbol}` : ''}
             >
                 <div>
                     <CoinIcon symbol={c.symbol} />
@@ -115,12 +115,12 @@ export default function WatchlistTable({
                 <div className="font-bold">{`$${price.toLocaleString()}`}</div>
 
                 <div
-                    className={`font-bold ${percent >= 0 ? 'text-green-500' : 'text-red-500'}`}
-                >{`${percent.toFixed(2)}%`}</div>
+                    className={`font-bold tracking-tight ${percent >= 0 ? 'text-up' : 'text-down'}`}
+                >{`${percent > 0 ? '+' : ''}${percent.toFixed(2)}%`}</div>
 
                 {isEditable && (
                     <button
-                        className="px-2 py-1 text-xs md:text-sm  text-gray-400 hover:text-red-500 transition cursor-pointer"
+                        className="px-3 py-1.5 rounded-md bg-surface border border-surface-border text-xs font-bold text-muted-foreground hover:bg-down/10 hover:text-down hover:border-down/30 transition-all cursor-pointer shadow-sm"
                         onClick={(e) => {
                             e.stopPropagation();
                             removeSymbol(c.symbol);

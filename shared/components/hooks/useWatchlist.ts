@@ -1,18 +1,19 @@
 'use client';
 
 import { Ticker } from '@/shared/types/common';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 
 export function useWatchlist() {
-    return useQuery({
-        queryKey: ['watchlist'],
-        queryFn: async () => {
+    const [data, setData] = useState<Ticker[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchWatchlist = async () => {
+            setIsLoading(true);
             try {
-                const res = await fetch('/api/watchlist');
-                if (!res.ok) {
-                    throw new Error('Failed to fetch watchlist');
-                }
-                const watchlistData = await res.json();
+                const storedWatchlist = localStorage.getItem('chartforge_watchlist');
+                const watchlistData = storedWatchlist ? JSON.parse(storedWatchlist) : [{ symbol: 'BTCUSDT' }, { symbol: 'ETHUSDT' }];
+
                 const binanceRes = await fetch(
                     'https://api.binance.com/api/v3/ticker/24hr',
                 );
@@ -26,11 +27,24 @@ export function useWatchlist() {
                 const finalData = watchlistData
                     .map((w: { symbol: string }) => coinMap.get(w.symbol))
                     .filter(Boolean) as Ticker[];
-                return finalData;
+                setData(finalData);
             } catch (error) {
                 console.error('Watchlist fetch error:', error);
-                return [];
+                setData([]);
+            } finally {
+                setIsLoading(false);
             }
-        },
-    });
+        };
+
+        fetchWatchlist();
+
+        const handleUpdate = () => {
+            fetchWatchlist();
+        };
+
+        window.addEventListener('watchlist_updated', handleUpdate);
+        return () => window.removeEventListener('watchlist_updated', handleUpdate);
+    }, []);
+
+    return { data, isLoading };
 }

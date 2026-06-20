@@ -18,6 +18,8 @@ import { PaneLegend } from '@shismomin/lwc-plugin-pracplugin';
 import CustomCandlestickSeries from '../../../shared/components/chart-components/series/CustomCandlestickSeries';
 import SamePaneIndicator from '../../indicators/SamePaneIndicator';
 import CustomPane from '@/shared/components/chart-components/panes/CustomPane';
+import { useLiquidityEngine } from '@/shared/components/hooks/useLiquidityEngine';
+import { LiquidityZonePrimitive } from '@/shared/components/chart-components/primitives/LiquidityZonePrimitive';
 
 type Props = {
     indicatorIds: string[];
@@ -26,8 +28,6 @@ type Props = {
 
 const EMPTY_CANDLES: CandlestickData[] = [];
 
-/////////////////////////////////////
-
 export default function MainChart({ indicatorIds, stretchFactor }: Props) {
     const { chartId, fetchMoreData } = useChartDataEngine();
     const timeScaleRef = useRef<TimeScaleApiRef>(null);
@@ -35,12 +35,26 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
     const candles = chartData.candles ?? EMPTY_CANDLES;
     const prevLoadingRef = useRef(chartData.prevLoading);
     const [legendApi, setLegendApi] = useState<PaneLegend>(new PaneLegend());
+    
+    // Liquidity Engine Integration
+    const timeframe = chartData.timeframe;
+    const liquiditySettings = useStore((state) => state.liquiditySettings);
+    
+    const liquidityZones = useLiquidityEngine(candles, timeframe, liquiditySettings);
+    const liquidityPrimitiveRef = useRef<LiquidityZonePrimitive>(new LiquidityZonePrimitive());
+    const [primitives] = useState([liquidityPrimitiveRef.current]);
+
+    useEffect(() => {
+        liquidityPrimitiveRef.current.updateZones(liquidityZones);
+    }, [liquidityZones]);
+
     useEffect(
         function () {
             prevLoadingRef.current = chartData.prevLoading;
         },
         [chartData.prevLoading],
     );
+
     const chartCandles: CandlestickData[] = useMemo(
         () =>
             candles.map((c) => ({
@@ -52,6 +66,7 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
             })),
         [candles],
     );
+
     const debouncedFetchMore = useMemo(
         () =>
             debounce(() => {
@@ -78,6 +93,7 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
                     priceLineVisible: false,
                 }}
                 legendApi={legendApi}
+                primitives={primitives}
             />
             {indicatorIds.length > 0 && (
                 <SamePaneIndicator

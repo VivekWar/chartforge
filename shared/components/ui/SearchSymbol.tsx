@@ -99,17 +99,18 @@ function SearchSym({
     }, [searchTerm, symbols]);
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden bg-dropdown-background rounded-lg border border-surface-border shadow-2xl backdrop-blur-md">
             {/* Search Header */}
-            <div className="flex items-center px-4 md:px-6 py-3 border-b border-search">
-                <div className="flex items-center gap-2 flex-1 h-10 px-3 rounded-md bg-search border border-transparent focus-within:border-blue-500 transition max-w-130">
+            <div className="flex items-center px-4 md:px-6 py-4 border-b border-surface-border bg-surface/50">
+                <div className="flex items-center gap-3 flex-1 h-12 px-4 rounded-lg bg-background border border-surface-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all w-full">
                     <MagnifyingGlassIcon className="h-5 w-5 text-muted-foreground" />
 
                     <input
                         type="text"
-                        placeholder="Search symbol..."
-                        className="flex-1 bg-transparent outline-none text-sm"
+                        placeholder="Search markets..."
+                        className="flex-1 bg-transparent outline-none text-base font-medium placeholder:text-muted-foreground/70"
                         value={searchTerm}
+                        autoFocus
                         onChange={(e) =>
                             setSearchTerm(e.target.value.toUpperCase())
                         }
@@ -118,11 +119,13 @@ function SearchSym({
             </div>
 
             {isLoading ? (
-                <Spinner />
+                <div className="flex-1 flex items-center justify-center min-h-[200px]">
+                    <Spinner />
+                </div>
             ) : (
                 <>
                     {/* Table Header */}
-                    <div className="flex items-center px-4 md:px-6 py-2 text-xs font-medium uppercase border-b border-search text-muted-foreground">
+                    <div className="flex items-center px-4 md:px-6 py-3 text-xs font-bold uppercase tracking-wider border-b border-surface-border text-muted-foreground bg-surface/30">
                         <span className="flex-1">Symbol</span>
 
                         {/* Hide description on small screens */}
@@ -137,12 +140,12 @@ function SearchSym({
                                 </span>
                             </>
                         ) : (
-                            <span className="w-24 text-right">status</span>
+                            <span className="w-24 text-right">Action</span>
                         )}
                     </div>
 
                     {/* List */}
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="flex-1 overflow-y-auto min-h-[300px]">
                         {filteredSymbols.map((s) => {
                             const isInWatchlist = watchlistData?.some(
                                 (coin) => coin.symbol === s.symbol,
@@ -150,19 +153,19 @@ function SearchSym({
                             return isRedirect ? (
                                 <Link
                                     key={s.symbol}
-                                    className="flex items-center px-4 md:px-6 py-3 border-b border-search hover:bg-hover cursor-pointer transition"
-                                    href={`/overview/${s.symbol}`}
+                                    className="flex items-center px-4 md:px-6 py-3 border-b border-surface-border hover:bg-hover cursor-pointer transition-colors group"
+                                    href={`/terminal/1/${s.symbol}`}
                                     onClick={() => {
                                         onCloseModal?.();
                                     }}
                                 >
                                     {/* Symbol */}
-                                    <div className="flex-1 font-medium flex gap-2">
-                                        <span>
+                                    <div className="flex-1 font-semibold flex items-center gap-3">
+                                        <span className="bg-surface p-1 rounded-md border border-surface-border group-hover:border-primary/30 transition-colors">
                                             <CoinIcon symbol={s.symbol} />
                                         </span>
-                                        <span>{s.base}</span>
-                                        <span className="text-primary ml-1">
+                                        <span className="text-foreground">{s.base}</span>
+                                        <span className="text-muted-foreground text-xs font-medium bg-surface px-1.5 py-0.5 rounded">
                                             {s.quote}
                                         </span>
                                     </div>
@@ -170,22 +173,22 @@ function SearchSym({
                                     {!watchlist ? (
                                         <>
                                             {/* Description */}
-                                            <div className="flex-1 text-muted-foreground text-sm hidden md:block">
+                                            <div className="flex-1 text-muted-foreground text-sm hidden md:block font-medium">
                                                 {s.base} / {s.quote}
                                             </div>
 
                                             {/* Exchange */}
-                                            <div className="w-24 text-right text-sm text-muted-foreground">
+                                            <div className="w-24 text-right text-xs font-bold text-muted-foreground/70 tracking-wide">
                                                 BINANCE
                                             </div>
                                         </>
                                     ) : (
                                         <button
                                             disabled={isInWatchlist}
-                                            className={`p-2 transition ${
+                                            className={`p-2 transition-all rounded-full hover:bg-surface-border ${
                                                 isInWatchlist
-                                                    ? 'text-yellow-400 cursor-not-allowed'
-                                                    : 'text-gray-400 hover:text-yellow-400'
+                                                    ? 'text-yellow-500 cursor-not-allowed opacity-50'
+                                                    : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
                                             }`}
                                             onClick={(e) => {
                                                 e.preventDefault();
@@ -195,7 +198,7 @@ function SearchSym({
                                                 }
                                             }}
                                         >
-                                            <StarIcon className="w-6 h-6" />
+                                            <StarIcon className="w-5 h-5" />
                                         </button>
                                     )}
                                 </Link>
@@ -210,31 +213,37 @@ function SearchSym({
                                             setAllChartsSymbol(s.symbol);
                                         }
                                     }}
-                                    className="flex items-center px-4 md:px-6 py-3 border-b border-search hover:bg-hover cursor-pointer transition"
+                                    className="flex items-center px-4 md:px-6 py-3 border-b border-surface-border hover:bg-hover cursor-pointer transition-colors group"
                                 >
                                     {/* Symbol */}
-                                    <div className="flex-1 font-medium flex gap-2">
-                                        <span>
+                                    <div className="flex-1 font-semibold flex items-center gap-3">
+                                        <span className="bg-surface p-1 rounded-md border border-surface-border group-hover:border-primary/30 transition-colors">
                                             <CoinIcon symbol={s.symbol} />
                                         </span>
-                                        <span>{s.base}</span>
-                                        <span className="text-primary ml-1">
+                                        <span className="text-foreground">{s.base}</span>
+                                        <span className="text-muted-foreground text-xs font-medium bg-surface px-1.5 py-0.5 rounded">
                                             {s.quote}
                                         </span>
                                     </div>
 
                                     {/* Description */}
-                                    <div className="flex-1 text-muted-foreground text-sm hidden md:block">
+                                    <div className="flex-1 text-muted-foreground text-sm hidden md:block font-medium">
                                         {s.base} / {s.quote}
                                     </div>
 
                                     {/* Exchange */}
-                                    <div className="w-24 text-right text-sm text-muted-foreground">
+                                    <div className="w-24 text-right text-xs font-bold text-muted-foreground/70 tracking-wide">
                                         BINANCE
                                     </div>
                                 </div>
                             );
                         })}
+                        {filteredSymbols.length === 0 && (
+                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-10">
+                                <MagnifyingGlassIcon className="w-10 h-10 mb-3 opacity-20" />
+                                <p className="font-medium">No markets found</p>
+                            </div>
+                        )}
                     </div>
                 </>
             )}

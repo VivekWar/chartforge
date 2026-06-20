@@ -2,15 +2,12 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import ThemeSwitch from './ModeToggle';
-import { UserButton, useUser } from '@clerk/nextjs';
 import SearchSymbol from './SearchSymbol';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { usePathname } from 'next/navigation';
 import AppLogo from './AppLogo';
 
 const navLinks = [
-    { name: 'Home', href: '/' },
-    { name: 'Markets', href: '/markets' },
     { name: 'Terminal', href: '/terminal' },
     { name: 'Watchlist', href: '/watchlist' },
 ];
@@ -31,21 +28,20 @@ const avatarAppearance = {
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
-    const { user, isSignedIn, isLoaded } = useUser();
     const pathName = usePathname();
     return (
-        <nav className="relative flex items-center justify-between h-14 md:h-16 w-full px-6 border-b border-border bg-panel z-50">
+        <nav className="relative flex items-center justify-between h-14 md:h-16 w-full px-6 border-b border-surface-border bg-background z-50">
             {/* Logo */}
             <AppLogo />
             {/* Desktop Nav */}
-            <ul className="hidden xl:flex items-center gap-8">
+            <ul className="hidden xl:flex items-center gap-8 ml-8 flex-1">
                 {navLinks.map((link) => {
-                    const isActive = pathName === link.href;
+                    const isActive = pathName.startsWith(link.href);
                     return (
                         <li key={link.name}>
                             <Link
                                 href={link.href}
-                                className={getLinkClass(isActive)}
+                                className={`text-sm font-bold tracking-wide transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                             >
                                 {link.name}
                             </Link>
@@ -57,53 +53,18 @@ export default function Navbar() {
             {/* Right Section Desktop */}
             <div className="hidden xl:flex items-center gap-4">
                 <SearchSymbol isRedirect={true}>
-                    <button className="cursor-pointer group opacity-70 hover:opacity-100">
-                        <span className="text-base opacity-70 group-hover:opacity-100">
-                            <MagnifyingGlassIcon className=" h-7 w-7" />
-                        </span>
+                    <button className="flex items-center justify-center p-2 rounded-full hover:bg-surface transition-colors cursor-pointer text-muted-foreground hover:text-foreground">
+                        <MagnifyingGlassIcon className="h-5 w-5" />
                     </button>
                 </SearchSymbol>
                 <ThemeSwitch />
-
-                {!isLoaded ? (
-                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md" />
-                ) : (
-                    !isSignedIn && (
-                        <>
-                            <Link
-                                href="/sign-in"
-                                className="px-5 py-1.5 text-sm font-medium rounded-xl border border-border hover:bg-hover transition-all"
-                            >
-                                Sign In
-                            </Link>
-
-                            <Link
-                                href="/sign-up"
-                                className="px-5 py-1.5 text-sm font-medium rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20"
-                            >
-                                Sign Up
-                            </Link>
-                        </>
-                    )
-                )}
-
-                {isSignedIn && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-foreground">
-                            {user?.fullName}
-                        </span>
-                        <UserButton appearance={avatarAppearance} />
-                    </div>
-                )}
             </div>
 
             {/* Mobile Right Section */}
-            <div className="xl:hidden flex items-center gap-3 z-100">
+            <div className="xl:hidden flex items-center gap-2 z-[100]">
                 <SearchSymbol isRedirect={true}>
-                    <button className="cursor-pointer group opacity-70 hover:opacity-100">
-                        <span className="text-base opacity-70 group-hover:opacity-100">
-                            <MagnifyingGlassIcon className=" h-7 w-7" />
-                        </span>
+                    <button className="flex items-center justify-center p-2 rounded-full hover:bg-surface transition-colors cursor-pointer text-muted-foreground hover:text-foreground">
+                        <MagnifyingGlassIcon className="h-5 w-5" />
                     </button>
                 </SearchSymbol>
                 <ThemeSwitch />
@@ -112,21 +73,21 @@ export default function Navbar() {
                     aria-label="Toggle menu"
                     aria-expanded={isOpen}
                     onClick={() => setIsOpen((prev) => !prev)}
-                    className="flex flex-col gap-1.25 cursor-pointer"
+                    className="flex flex-col justify-center gap-1.5 p-2 cursor-pointer rounded-md hover:bg-surface transition-colors ml-1"
                 >
                     <span
-                        className={`block w-6 h-0.5 bg-foreground transition-all ${
-                            isOpen ? 'rotate-45 translate-y-2' : ''
+                        className={`block w-5 h-[2px] bg-foreground transition-transform origin-center ${
+                            isOpen ? 'rotate-45 translate-y-[8px]' : ''
                         }`}
                     />
                     <span
-                        className={`block w-6 h-0.5 bg-foreground transition-all ${
+                        className={`block w-5 h-[2px] bg-foreground transition-opacity ${
                             isOpen ? 'opacity-0' : ''
                         }`}
                     />
                     <span
-                        className={`block w-6 h-0.5 bg-foreground transition-all ${
-                            isOpen ? '-rotate-45 -translate-y-1.5' : ''
+                        className={`block w-5 h-[2px] bg-foreground transition-transform origin-center ${
+                            isOpen ? '-rotate-45 -translate-y-[8px]' : ''
                         }`}
                     />
                 </button>
@@ -135,66 +96,32 @@ export default function Navbar() {
             {/* Mobile Backdrop */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black/40 xl:hidden"
+                    className="fixed inset-0 bg-background/80 backdrop-blur-sm xl:hidden z-40 transition-opacity"
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
             {/* Mobile Drawer */}
             <div
-                className={`fixed top-0 right-0 h-screen w-72 bg-panel border-l border-border transform transition-transform duration-300 xl:hidden ${
+                className={`fixed top-14 md:top-16 right-0 h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] w-full max-w-sm bg-surface border-l border-surface-border transform transition-transform duration-300 xl:hidden z-50 shadow-2xl ${
                     isOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
             >
-                <ul className="flex flex-col gap-6 px-8 py-15">
-                    {isSignedIn && (
-                        <li className="flex flex-col gap-4">
-                            <div className="flex items-center gap-2">
-                                <span className="font-semibold text-sm text-foreground">
-                                    {user?.fullName}
-                                </span>
-                                <UserButton appearance={avatarAppearance} />
-                            </div>
-                            <div className="border-t border-border" />
-                        </li>
-                    )}
-
+                <ul className="flex flex-col px-6 py-8 gap-4">
                     {navLinks.map((link) => {
-                        const isActive = pathName === link.href;
+                        const isActive = pathName.startsWith(link.href);
                         return (
                             <li key={link.name}>
                                 <Link
                                     href={link.href}
                                     onClick={() => setIsOpen(false)}
-                                    // className="text-base font-medium text-foreground"
-                                    // className={navLinkClass}
-                                    className={getLinkClass(isActive)}
+                                    className={`flex items-center w-full px-4 py-3 rounded-lg text-base font-bold transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-hover hover:text-foreground'}`}
                                 >
                                     {link.name}
                                 </Link>
                             </li>
                         );
                     })}
-
-                    {!isSignedIn && isLoaded && (
-                        <li className="flex flex-col gap-3 mt-6">
-                            <Link
-                                href="/sign-in"
-                                onClick={() => setIsOpen(false)}
-                                className="px-5 py-2 rounded-xl border border-border text-center"
-                            >
-                                Sign In
-                            </Link>
-
-                            <Link
-                                href="/sign-up"
-                                onClick={() => setIsOpen(false)}
-                                className="px-5 py-2 rounded-xl bg-blue-600 text-white text-center"
-                            >
-                                Sign Up
-                            </Link>
-                        </li>
-                    )}
                 </ul>
             </div>
         </nav>

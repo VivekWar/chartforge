@@ -115,7 +115,7 @@ export default function CoinsStatusTable({
                     <Table.Row
                         key={c.symbol}
                         isRedirectable={true}
-                        to={`/overview/${c.symbol}`}
+                        to={`/terminal/1/${c.symbol}`}
                     >
                         <div>
                             <CoinIcon symbol={c.symbol} />

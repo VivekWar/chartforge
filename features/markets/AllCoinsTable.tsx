@@ -82,7 +82,7 @@ export default function AllCoinsTable({ coinsInfoList }: Props) {
                         <tr
                             {...props}
                             onClick={() =>
-                                router.push(`/overview/${props.item.symbol}`)
+                                router.push(`/terminal/1/${props.item.symbol}`)
                             }
                             className="cursor-pointer hover:bg-hover/30 active:scale-[0.998] transition"
                         />
