@@ -20,6 +20,9 @@ import SamePaneIndicator from '../../indicators/SamePaneIndicator';
 import CustomPane from '@/shared/components/chart-components/panes/CustomPane';
 import { useLiquidityEngine } from '@/shared/components/hooks/useLiquidityEngine';
 import { LiquidityZonePrimitive } from '@/shared/components/chart-components/primitives/LiquidityZonePrimitive';
+import { useEnigmaTrader } from '@/shared/components/hooks/useEnigmaTrader';
+import { TradeSetupPrimitive } from '@/shared/components/chart-components/primitives/TradeSetupPrimitive';
+import { TimeFrameType } from '@/shared/types/common';
 
 type Props = {
     indicatorIds: string[];
@@ -33,6 +36,7 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
     const timeScaleRef = useRef<TimeScaleApiRef>(null);
     const chartData = useStore(selectChartDataByChartId(chartId));
     const candles = chartData.candles ?? EMPTY_CANDLES;
+    const macroCandles = chartData.macroCandles ?? EMPTY_CANDLES;
     const prevLoadingRef = useRef(chartData.prevLoading);
     const [legendApi, setLegendApi] = useState<PaneLegend>(new PaneLegend());
     
@@ -40,13 +44,75 @@ export default function MainChart({ indicatorIds, stretchFactor }: Props) {
     const timeframe = chartData.timeframe;
     const liquiditySettings = useStore((state) => state.liquiditySettings);
     
-    const liquidityZones = useLiquidityEngine(candles, timeframe, liquiditySettings);
+    const getMacroTimeframe = (tf: TimeFrameType): TimeFrameType => {
+        if (tf === '1m') return '15m';
+        if (tf === '5m') return '1h';
+        if (tf === '15m') return '4h';
+        if (tf === '1h' || tf === '4h') return '1d';
+        return '1w';
+    };
+    const macroTimeframe = getMacroTimeframe(timeframe);
+
+    // Macro Engine (Targets)
+    const macroSettings = useMemo(() => ({
+        ...liquiditySettings,
+        showWickBlocks: false, showIcebergBlocks: false, showBombFireBlocks: false, showInstitutionalZones: false,
+        showFVG: true, showMagneticBlocks: true
+    }), [liquiditySettings]);
+    const macroZones = useLiquidityEngine(macroCandles, macroTimeframe, macroSettings);
+
+    // Micro Engine (Entries)
+    const microSettings = useMemo(() => ({
+        ...liquiditySettings,
+        showFVG: false, showMagneticBlocks: false,
+    }), [liquiditySettings]);
+    const microZones = useLiquidityEngine(candles, timeframe, microSettings);
+
+    // Virtual Trader
+    const metrics = useStore(state => state.dashboardMetrics);
+    const activeSetup = useStore(state => state.activeTradeSetup);
+    const currentCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+    useEnigmaTrader(microZones, macroZones, currentCandle, metrics.bias);
+
+    // Timestamp Mapping for Macro targets to Micro X-axis
+    const mappedMacroZones = useMemo(() => {
+        return macroZones.map(zone => {
+            let closestTime = zone.startTime;
+            const targetTime = Number(zone.startTime);
+            const match = candles.find(c => Number(c.time) >= targetTime);
+            if (match) closestTime = match.time as Time;
+            return { ...zone, startTime: closestTime };
+        });
+    }, [macroZones, candles]);
+
+    const combinedZones = useMemo(() => [...microZones, ...mappedMacroZones], [microZones, mappedMacroZones]);
+
     const liquidityPrimitiveRef = useRef<LiquidityZonePrimitive>(new LiquidityZonePrimitive());
-    const [primitives] = useState([liquidityPrimitiveRef.current]);
+    const tradeSetupPrimitiveRef = useRef<TradeSetupPrimitive | null>(null);
+
+    // Initialize trade setup primitive if missing and setup exists
+    if (!tradeSetupPrimitiveRef.current && activeSetup) {
+        tradeSetupPrimitiveRef.current = new TradeSetupPrimitive(activeSetup);
+    }
+
+    const [primitives, setPrimitives] = useState<any[]>([liquidityPrimitiveRef.current]);
 
     useEffect(() => {
-        liquidityPrimitiveRef.current.updateZones(liquidityZones);
-    }, [liquidityZones]);
+        if (activeSetup) {
+            if (!tradeSetupPrimitiveRef.current) tradeSetupPrimitiveRef.current = new TradeSetupPrimitive(activeSetup);
+            else tradeSetupPrimitiveRef.current.update(activeSetup);
+            
+            if (!primitives.includes(tradeSetupPrimitiveRef.current)) {
+                setPrimitives([liquidityPrimitiveRef.current, tradeSetupPrimitiveRef.current]);
+            }
+        } else if (!activeSetup && tradeSetupPrimitiveRef.current && primitives.includes(tradeSetupPrimitiveRef.current)) {
+            setPrimitives([liquidityPrimitiveRef.current]);
+        }
+    }, [activeSetup, primitives]);
+
+    useEffect(() => {
+        liquidityPrimitiveRef.current.updateZones(combinedZones);
+    }, [combinedZones]);
 
     useEffect(
         function () {

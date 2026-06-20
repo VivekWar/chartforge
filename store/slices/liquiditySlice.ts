@@ -16,6 +16,18 @@ export interface LiquiditySetup {
     invalidationPrice?: number;
 }
 
+export interface TradeSetup {
+    id: string;
+    entryPrice: number;
+    stopLoss: number;
+    takeProfit: number;
+    riskRewardRatio: number;
+    status: 'Pending' | 'Active' | 'Won' | 'Lost';
+    direction: Direction;
+    associatedZones: string[];
+    entryTime: number;
+}
+
 export interface DashboardMetrics {
     bias: MarketBias;
     topSetup: LiquiditySetup | null;
@@ -43,8 +55,10 @@ export interface LiquiditySettings {
 export interface LiquiditySlice {
     liquiditySettings: LiquiditySettings;
     dashboardMetrics: DashboardMetrics;
+    activeTradeSetup: TradeSetup | null;
     toggleLiquiditySetting: (key: keyof LiquiditySettings) => void;
     setDashboardMetrics: (metrics: DashboardMetrics) => void;
+    setActiveTradeSetup: (setup: TradeSetup | null) => void;
 }
 
 export const createLiquiditySlice: StateCreator<
@@ -68,6 +82,7 @@ export const createLiquiditySlice: StateCreator<
         activeTargets: [],
         zoneSummary: { detected: 0, triggered: 0, tapped: 0, partiallyFilled: 0, completed: 0, invalidated: 0 },
     },
+    activeTradeSetup: null,
     toggleLiquiditySetting: (key) => {
         set((draft) => {
             draft.liquiditySettings[key] = !draft.liquiditySettings[key];
@@ -76,6 +91,11 @@ export const createLiquiditySlice: StateCreator<
     setDashboardMetrics: (metrics) => {
         set((draft) => {
             draft.dashboardMetrics = metrics;
+        });
+    },
+    setActiveTradeSetup: (setup) => {
+        set((draft) => {
+            draft.activeTradeSetup = setup;
         });
     },
 });

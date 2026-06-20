@@ -13,11 +13,11 @@ import { selectChartDataByChartId } from '@/store/selectors/chartDataSelectors';
 import { selectChartIndicatorByChartId } from '@/store/selectors/indicatorsDataSelectors';
 import { useBinanceSocket } from './binance-socket-provider';
 import { BinanceKlineEvent } from '@/lib/binance/BinanceSocket';
-import type { CandlestickDataResponse, CandleType } from '../types/common';
 import {
     fetchAggCandlestickData,
     fetchCandlestickData,
 } from '@/lib/binance/marketData';
+import type { CandlestickDataResponse, CandleType, TimeFrameType } from '../types/common';
 type ChartEngineContextValue = {
     fetchMoreData: () => void;
     chartId: string;
@@ -60,15 +60,27 @@ export default function ChartDataEngineProvider({ children, chartId }: Props) {
         setInitLoadingByChartId,
         setPrevLoadingByChartId,
         setInitCandlesByChartId,
+        setInitMacroCandlesByChartId,
         setTempCandlesByChartId,
         setCacheCandlesByChartId,
         updateHistoryByChartId,
+        updateMacroHistoryByChartId,
         setIndicatorByChartAndIndicatorId,
         updateIndicatorHistoryByChartAndIndicatorId,
         updateLiveIndicatorByChartAndIndicatorId,
         updateLiveCandleByChartId,
+        updateLiveMacroCandleByChartId,
         updateLiveTempCandlesByChartId,
     } = useStore();
+
+    // Helper for MTF
+    const getMacroTimeframe = (tf: string): TimeFrameType => {
+        if (tf === '1m') return '15m';
+        if (tf === '5m') return '1h';
+        if (tf === '15m') return '4h';
+        if (tf === '1h' || tf === '4h') return '1d';
+        return '1w';
+    };
     const chartData = useStore(selectChartDataByChartId(chartId));
     const chartIndicators = useStore(selectChartIndicatorByChartId(chartId));
     const { socket } = useBinanceSocket();
@@ -139,20 +151,25 @@ export default function ChartDataEngineProvider({ children, chartId }: Props) {
                     if (!symbolRef.current || !timeframeRef.current) return;
                     setInitLoadingByChartId(chartId, true);
                     let data: CandlestickDataResponse | null = null;
+                    let macroData: CandlestickDataResponse | null = null;
+                    const macroTf = getMacroTimeframe(timeframeRef.current);
+
                     if (!AppConfig.isAggInterval(timeframeRef.current)) {
-                        data = await fetchCandlestickData({
-                            symbol: symbolRef.current,
-                            interval: timeframeRef.current,
-                        });
+                        [data, macroData] = await Promise.all([
+                            fetchCandlestickData({ symbol: symbolRef.current, interval: timeframeRef.current }),
+                            fetchCandlestickData({ symbol: symbolRef.current, interval: macroTf })
+                        ]);
                     } else {
-                        data = await fetchAggCandlestickData({
-                            symbol: symbolRef.current,
-                            interval: timeframeRef.current,
-                        });
+                        // For simplicity, macro data for agg intervals just uses base fetch
+                        [data, macroData] = await Promise.all([
+                            fetchAggCandlestickData({ symbol: symbolRef.current, interval: timeframeRef.current }),
+                            fetchCandlestickData({ symbol: symbolRef.current, interval: macroTf })
+                        ]);
                     }
                     if (!data) return;
                     setAllIndicators(data.cacheData, data.finalData);
                     setInitCandlesByChartId(chartId, data.finalData);
+                    if (macroData) setInitMacroCandlesByChartId(chartId, macroData.finalData);
                     setTempCandlesByChartId(chartId, data.tempData);
                     setCacheCandlesByChartId(chartId, data.cacheData);
                 } catch (error) {
@@ -180,17 +197,23 @@ export default function ChartDataEngineProvider({ children, chartId }: Props) {
 
     const onBinanceKline = useCallback(
         function (event: BinanceKlineEvent) {
-            if (event.s === symbol && event.k.i === timeframe) {
-                const data = formatKline(event);
-
-                if (!data) return;
-                updateAllIndicatorsInLive(data);
-                updateLiveCandleByChartId(chartId, data);
+            if (event.s === symbol) {
+                if (event.k.i === timeframe) {
+                    const data = formatKline(event);
+                    if (!data) return;
+                    updateAllIndicatorsInLive(data);
+                    updateLiveCandleByChartId(chartId, data);
+                } else if (event.k.i === getMacroTimeframe(timeframe)) {
+                    const data = formatKline(event);
+                    if (!data) return;
+                    updateLiveMacroCandleByChartId(chartId, data);
+                }
             }
         },
         [
             chartId,
             updateLiveCandleByChartId,
+            updateLiveMacroCandleByChartId,
             updateAllIndicatorsInLive,
             symbol,
             timeframe,
@@ -239,11 +262,17 @@ export default function ChartDataEngineProvider({ children, chartId }: Props) {
                 sourceInterval = timeframe;
             }
             if (!sourceInterval) return;
+            
+            const macroInterval = getMacroTimeframe(timeframe);
+
             socket.subscribeKline(symbol, sourceInterval);
+            socket.subscribeKline(symbol, macroInterval); // Subscribe to macro
+            
             socket.addKlineHandler(isAgg ? onAggKline : onBinanceKline);
             return () => {
                 socket.removeKlineHandler(isAgg ? onAggKline : onBinanceKline);
                 socket.unsubscribeKline(symbol, sourceInterval);
+                socket.unsubscribeKline(symbol, macroInterval);
             };
         },
         [socket, symbol, timeframe, onBinanceKline, onAggKline],
@@ -259,22 +288,40 @@ export default function ChartDataEngineProvider({ children, chartId }: Props) {
                     return;
                 setPrevLoadingByChartId(chartId, true);
                 let data: CandlestickDataResponse | null = null;
+                let macroData: CandlestickDataResponse | null = null;
+                const macroTf = getMacroTimeframe(timeframeRef.current);
+
                 if (!AppConfig.isAggInterval(timeframeRef.current)) {
-                    data = await fetchCandlestickData({
-                        symbol: symbolRef.current,
-                        interval: timeframeRef.current,
-                        endTime: firstHistoryRef.current,
-                    });
+                    [data, macroData] = await Promise.all([
+                        fetchCandlestickData({
+                            symbol: symbolRef.current,
+                            interval: timeframeRef.current,
+                            endTime: firstHistoryRef.current,
+                        }),
+                        fetchCandlestickData({
+                            symbol: symbolRef.current,
+                            interval: macroTf,
+                            endTime: firstHistoryRef.current, // Approximate alignment
+                        })
+                    ]);
                 } else {
-                    data = await fetchAggCandlestickData({
-                        symbol: symbolRef.current,
-                        interval: timeframeRef.current,
-                        endTime: firstHistoryRef.current,
-                    });
+                    [data, macroData] = await Promise.all([
+                        fetchAggCandlestickData({
+                            symbol: symbolRef.current,
+                            interval: timeframeRef.current,
+                            endTime: firstHistoryRef.current,
+                        }),
+                        fetchCandlestickData({
+                            symbol: symbolRef.current,
+                            interval: macroTf,
+                            endTime: firstHistoryRef.current,
+                        })
+                    ]);
                 }
                 if (!data) return;
                 updateAllIndicatorsHistory(data.cacheData, data.finalData);
                 updateHistoryByChartId(chartId, data.finalData);
+                if (macroData) updateMacroHistoryByChartId(chartId, macroData.finalData);
                 setCacheCandlesByChartId(chartId, data.cacheData);
             } catch (error) {
                 if (error instanceof Error) {

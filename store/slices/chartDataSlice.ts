@@ -6,6 +6,7 @@ import { CandleType, TimeFrameType } from '@/shared/types/common';
 
 interface ChartCandlestickData {
     candles: CandleType[];
+    macroCandles: CandleType[];
     cacheCandles: CandleType[];
     tempCandles?: CandleType[];
 }
@@ -31,12 +32,15 @@ export interface ChartsDataSlice {
     setInitLoadingByChartId: (id: string, loading: boolean) => void;
     setPrevLoadingByChartId: (id: string, loading: boolean) => void;
     setInitCandlesByChartId: (id: string, candlesArr: CandleType[]) => void;
+    setInitMacroCandlesByChartId: (id: string, candlesArr: CandleType[]) => void;
     setTempCandlesByChartId: (id: string, candlesArr: CandleType[]) => void;
     setCacheCandlesByChartId: (id: string, candlesArr: CandleType[]) => void;
     setSyncIndicator: (value: boolean) => void;
     setSyncSymbol: (value: boolean) => void;
     updateHistoryByChartId: (id: string, candlesArr: CandleType[]) => void;
+    updateMacroHistoryByChartId: (id: string, candlesArr: CandleType[]) => void;
     updateLiveCandleByChartId: (id: string, candle: CandleType) => void;
+    updateLiveMacroCandleByChartId: (id: string, candle: CandleType) => void;
     updateLiveTempCandlesByChartId: (
         id: string,
         targetTime: TimeFrameType,
@@ -62,6 +66,7 @@ export const creatChartDataSlice: StateCreator<
                     acc[chart.chartId] = {
                         ...chart,
                         candles: [],
+                        macroCandles: [],
                         cacheCandles: [],
                         tempCandles: [],
                         prevLoading: false,
@@ -150,11 +155,16 @@ export const creatChartDataSlice: StateCreator<
         set((draft) => {
             const chart = draft.chartsById[id];
             if (!chart) return;
-            // if (!draft.chartsById[id]) return;
             chart.candles = [...candlesArr];
-            chart.firstHistoryTime = candlesArr[0].time;
-            // console.log(candlesArr);
-            // console.log(chart.firstHistoryTime);
+            chart.firstHistoryTime = candlesArr[0]?.time ?? null;
+        });
+    },
+    setInitMacroCandlesByChartId: (id, candlesArr) => {
+        if (!id) return;
+        set((draft) => {
+            const chart = draft.chartsById[id];
+            if (!chart) return;
+            chart.macroCandles = [...candlesArr];
         });
     },
     setTempCandlesByChartId: (id, candlesArr) => {
@@ -192,8 +202,15 @@ export const creatChartDataSlice: StateCreator<
             const chart = draft.chartsById[id];
             if (!chart) return;
             chart.candles.unshift(...candlesArr);
-            // state.chartsById[id].candles = [...candlesArr];
-            draft.chartsById[id].firstHistoryTime = candlesArr[0].time;
+            draft.chartsById[id].firstHistoryTime = candlesArr[0]?.time ?? null;
+        });
+    },
+    updateMacroHistoryByChartId: (id, candlesArr) => {
+        if (!id) return;
+        set((draft) => {
+            const chart = draft.chartsById[id];
+            if (!chart) return;
+            chart.macroCandles.unshift(...candlesArr);
         });
     },
     updateLiveCandleByChartId: (id, candle) => {
@@ -206,6 +223,19 @@ export const creatChartDataSlice: StateCreator<
                 candles.push(candle);
             } else {
                 candles.push(candle);
+            }
+        });
+    },
+    updateLiveMacroCandleByChartId: (id, candle) => {
+        if (!id) return;
+        set((draft) => {
+            const { macroCandles } = draft.chartsById[id];
+            if (macroCandles.length <= 0) return;
+            if (macroCandles[macroCandles.length - 1].time === candle.time) {
+                macroCandles.pop();
+                macroCandles.push(candle);
+            } else {
+                macroCandles.push(candle);
             }
         });
     },

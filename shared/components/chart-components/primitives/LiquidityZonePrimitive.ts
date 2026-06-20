@@ -32,9 +32,10 @@ class LiquidityPaneRenderer implements IPrimitivePaneRenderer {
                 if (startX === null || startX === undefined) continue;
 
                 // Fixed width for active zones
-                const endX = zone.status === 'Completed' || zone.status === 'Invalidated'
-                    ? timeScale.timeToCoordinate(zone.endTime) // just use endTime for drawing width if dead
-                    : startX + 150; 
+                // If Detected (Unmitigated), extend infinitely to the right
+                const endX = (zone.status === 'Detected') 
+                    ? null
+                    : timeScale.timeToCoordinate(zone.endTime);
 
                 const topY = this._series.priceToCoordinate(zone.topPrice);
                 const bottomY = this._series.priceToCoordinate(zone.bottomPrice);
@@ -42,7 +43,8 @@ class LiquidityPaneRenderer implements IPrimitivePaneRenderer {
                 if (topY === null || bottomY === null) continue;
 
                 const actualStartX = startX * scope.horizontalPixelRatio;
-                const actualEndX = (endX ?? timeScale.width()) * scope.horizontalPixelRatio;
+                // If endX is null, extend to the canvas width
+                const actualEndX = (endX !== null) ? (endX * scope.horizontalPixelRatio) : (ctx.canvas.clientWidth * scope.horizontalPixelRatio);
                 const actualTopY = Math.min(topY, bottomY) * scope.verticalPixelRatio;
                 const actualBottomY = Math.max(topY, bottomY) * scope.verticalPixelRatio;
 
@@ -51,42 +53,40 @@ class LiquidityPaneRenderer implements IPrimitivePaneRenderer {
 
                 if (width <= 0 || height <= 0) continue;
 
-                // Determine base color by Zone Type
-                let baseR = 100, baseG = 100, baseB = 100;
-                
-                if (zone.type === 'InstitutionalZone') {
-                    baseR = 255; baseG = 215; baseB = 0; // Gold
-                } else if (zone.type === 'WickBlock') {
-                    baseR = 155; baseG = 89; baseB = 182; // Purple
-                } else if (zone.type === 'IcebergBlock') {
-                    baseR = 52; baseG = 152; baseB = 219; // Blue
-                } else if (zone.type === 'MagneticBlock') {
-                    baseR = 230; baseG = 126; baseB = 34; // Orange
+                // Determine strict color by Direction
+                let baseR, baseG, baseB;
+                let isBull = zone.direction === 'bullish';
+                if (zone.status === 'Inverted') isBull = !isBull; // Flip polarity color for IFVG
+
+                if (isBull) {
+                    baseR = 34; baseG = 197; baseB = 94; // rgba(34, 197, 94, ...)
                 } else {
-                    // Standard FVG colors
-                    let isBull = zone.direction === 'bullish';
-                    if (zone.status === 'Inverted') isBull = !isBull; // Flip polarity color for IFVG
-                    if (isBull) { baseR = 8; baseG = 153; baseB = 129; }
-                    else { baseR = 242; baseG = 54; baseB = 69; }
+                    baseR = 239; baseG = 68; baseB = 68; // rgba(239, 68, 68, ...)
                 }
 
                 // Opacity based on Zone Status Lifecycle
-                let alpha = 0.6;
-                if (zone.status === 'Invalidated') alpha = 0.1; // Ghosted
-                else if (zone.status === 'Partially Filled') alpha = 0.3;
-                else if (zone.status === 'Tapped') alpha = 0.45;
-                else if (zone.status === 'Inverted') alpha = 0.6; // High opacity for flipped zone
+                let alpha = 0.2; // Base for detected
+                if (zone.status === 'Invalidated') alpha = 0.05; // Ghosted
+                else if (zone.status === 'Partially Filled') alpha = 0.1;
+                else if (zone.status === 'Tapped') alpha = 0.15;
+                else if (zone.status === 'Inverted') alpha = 0.3; // High opacity for flipped zone
 
+                // Fill Background
                 ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${alpha})`;
                 ctx.fillRect(actualStartX, actualTopY, width, height);
+
+                // Draw Solid Border
+                ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${zone.status === 'Invalidated' ? 0.2 : 1})`;
+                ctx.lineWidth = 1 * scope.horizontalPixelRatio;
+                ctx.strokeRect(actualStartX, actualTopY, width, height);
 
                 // Draw Text Label
                 if (zone.status !== 'Completed') {
                     const typeLabel = zone.status === 'Inverted' ? `I${zone.type}` : zone.type;
                     const labelText = `[${Math.round(zone.score)}] ${typeLabel} | ${zone.status}`;
                     ctx.font = `${Math.round(11 * scope.horizontalPixelRatio)}px Inter, sans-serif`;
-                    // If invalidated, make text red to show failure
-                    ctx.fillStyle = zone.status === 'Invalidated' ? 'rgba(255, 0, 0, 0.8)' : `rgba(${baseR}, ${baseG}, ${baseB}, 1)`;
+                    // If invalidated, make text ghosted as well
+                    ctx.fillStyle = zone.status === 'Invalidated' ? `rgba(${baseR}, ${baseG}, ${baseB}, 0.5)` : `rgba(${baseR}, ${baseG}, ${baseB}, 1)`;
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
                     
